@@ -65,9 +65,13 @@ class ExpenseStore:
         self.initialize()
 
     # Return the visible expense list, total, and filter options used by the UI.
-    def get_expense_view(self, category="", sort=""):
+    def get_expense_view(self, user_identity, category="", sort=""):
         with self.lock:
-            all_expenses = list(self.state["expenses"])
+            all_expenses = [
+                expense
+                for expense in self.state["expenses"]
+                if expense.get("ownerId") == user_identity["id"]
+            ]
             normalized_category = category.strip().lower()
 
             if normalized_category:
@@ -92,12 +96,15 @@ class ExpenseStore:
             }
 
     # Create a new expense once, or replay the original result when the same request is retried.
-    def create_expense(self, expense_input, idempotency_key=None):
+    def create_expense(self, expense_input, user_identity, idempotency_key=None):
         with self.lock:
             request_hash = create_request_hash(expense_input)
+            scoped_idempotency_key = (
+                f"{user_identity['id']}::{idempotency_key}" if idempotency_key else None
+            )
 
-            if idempotency_key:
-                previous_result = self.state["idempotencyKeys"].get(idempotency_key)
+            if scoped_idempotency_key:
+                previous_result = self.state["idempotencyKeys"].get(scoped_idempotency_key)
 
                 if previous_result:
                     if previous_result["requestHash"] != request_hash:
@@ -125,12 +132,14 @@ class ExpenseStore:
                 "description": expense_input["description"],
                 "date": expense_input["date"],
                 "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "ownerId": user_identity["id"],
+                "ownerName": user_identity["name"],
             }
 
             self.state["expenses"].append(new_expense)
 
-            if idempotency_key:
-                self.state["idempotencyKeys"][idempotency_key] = {
+            if scoped_idempotency_key:
+                self.state["idempotencyKeys"][scoped_idempotency_key] = {
                     "expenseId": new_expense["id"],
                     "requestHash": request_hash,
                     "createdAt": new_expense["createdAt"],

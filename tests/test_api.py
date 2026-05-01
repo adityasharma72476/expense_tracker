@@ -39,13 +39,15 @@ class ExpenseApiTests(unittest.IsolatedAsyncioTestCase):
             "date": "2026-04-05",
         }
 
-        first_create_response = await self.post_expense(first_expense, "create-first")
-        second_create_response = await self.post_expense(second_expense, "create-second")
+        first_create_response = await self.post_expense(first_expense, "create-first", "Aditya")
+        second_create_response = await self.post_expense(second_expense, "create-second", "Aditya")
 
         self.assertEqual(first_create_response.status_code, 201)
         self.assertEqual(second_create_response.status_code, 201)
 
-        sorted_response = await self.client.get("/expenses?sort=date_desc")
+        sorted_response = await self.client.get(
+            "/expenses?sort=date_desc", headers=self.user_headers("Aditya")
+        )
         sorted_payload = sorted_response.json()
 
         self.assertEqual(sorted_response.status_code, 200)
@@ -54,7 +56,9 @@ class ExpenseApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(sorted_payload["expenses"][1]["category"], "Groceries")
         self.assertEqual(sorted_payload["total_amount"], "2099.50")
 
-        filtered_response = await self.client.get("/expenses?category=Groceries&sort=date_desc")
+        filtered_response = await self.client.get(
+            "/expenses?category=Groceries&sort=date_desc", headers=self.user_headers("Aditya")
+        )
         filtered_payload = filtered_response.json()
 
         self.assertEqual(filtered_response.status_code, 200)
@@ -71,11 +75,13 @@ class ExpenseApiTests(unittest.IsolatedAsyncioTestCase):
             "date": "2026-04-03",
         }
 
-        first_response = await self.post_expense(payload, "same-request")
+        first_response = await self.post_expense(payload, "same-request", "Aditya")
         first_body = first_response.json()
-        second_response = await self.post_expense(payload, "same-request")
+        second_response = await self.post_expense(payload, "same-request", "Aditya")
         second_body = second_response.json()
-        list_response = await self.client.get("/expenses?sort=date_desc")
+        list_response = await self.client.get(
+            "/expenses?sort=date_desc", headers=self.user_headers("Aditya")
+        )
         list_body = list_response.json()
 
         self.assertEqual(first_response.status_code, 201)
@@ -83,6 +89,46 @@ class ExpenseApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(first_body["expense"]["id"], second_body["expense"]["id"])
         self.assertTrue(second_body["replayed"])
         self.assertEqual(len(list_body["expenses"]), 1)
+
+    async def test_expenses_are_scoped_per_user_and_same_key_can_be_reused_by_different_users(self):
+        aditya_response = await self.post_expense(
+            {
+                "amount": "350.00",
+                "category": "Dining",
+                "description": "Lunch",
+                "date": "2026-04-04",
+            },
+            "shared-key",
+            "Aditya",
+        )
+        priya_response = await self.post_expense(
+            {
+                "amount": "420.00",
+                "category": "Travel",
+                "description": "Cab ride",
+                "date": "2026-04-05",
+            },
+            "shared-key",
+            "Priya",
+        )
+
+        aditya_list = await self.client.get(
+            "/expenses?sort=date_desc", headers=self.user_headers("Aditya")
+        )
+        priya_list = await self.client.get(
+            "/expenses?sort=date_desc", headers=self.user_headers("Priya")
+        )
+        unauthenticated_list = await self.client.get("/expenses?sort=date_desc")
+
+        self.assertEqual(aditya_response.status_code, 201)
+        self.assertEqual(priya_response.status_code, 201)
+        self.assertEqual(len(aditya_list.json()["expenses"]), 1)
+        self.assertEqual(aditya_list.json()["expenses"][0]["description"], "Lunch")
+        self.assertEqual(aditya_list.json()["total_amount"], "350.00")
+        self.assertEqual(len(priya_list.json()["expenses"]), 1)
+        self.assertEqual(priya_list.json()["expenses"][0]["description"], "Cab ride")
+        self.assertEqual(priya_list.json()["total_amount"], "420.00")
+        self.assertEqual(unauthenticated_list.status_code, 401)
 
     async def test_post_expenses_rejects_invalid_data_and_conflicting_idempotency_reuse(self):
         invalid_response = await self.post_expense(
@@ -93,6 +139,7 @@ class ExpenseApiTests(unittest.IsolatedAsyncioTestCase):
                 "date": "2026-04-02",
             },
             "invalid-expense",
+            "Aditya",
         )
 
         valid_response = await self.post_expense(
@@ -103,6 +150,7 @@ class ExpenseApiTests(unittest.IsolatedAsyncioTestCase):
                 "date": "2026-04-02",
             },
             "conflicting-key",
+            "Aditya",
         )
 
         conflicting_response = await self.post_expense(
@@ -113,15 +161,23 @@ class ExpenseApiTests(unittest.IsolatedAsyncioTestCase):
                 "date": "2026-04-02",
             },
             "conflicting-key",
+            "Aditya",
         )
 
         self.assertEqual(invalid_response.status_code, 400)
         self.assertEqual(valid_response.status_code, 201)
         self.assertEqual(conflicting_response.status_code, 409)
 
-    async def post_expense(self, payload, idempotency_key):
+    async def post_expense(self, payload, idempotency_key, user_name):
         return await self.client.post(
             "/expenses",
-            headers={"Content-Type": "application/json", "Idempotency-Key": idempotency_key},
+            headers={
+                "Content-Type": "application/json",
+                "Idempotency-Key": idempotency_key,
+                **self.user_headers(user_name),
+            },
             json=payload,
         )
+
+    def user_headers(self, user_name):
+        return {"X-User-Name": user_name}

@@ -91,12 +91,23 @@ label span,
   margin-top: 1rem;
 }
 
+.auth-panel {
+  margin-top: 1rem;
+  padding: 1.5rem;
+}
+
 .summary-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .summary-card {
   padding: 1.25rem 1.5rem;
+}
+
+.identity-line {
+  margin: 1rem 0 0;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
 .summary-label {
@@ -135,10 +146,16 @@ label span,
   text-align: right;
 }
 
+.auth-form,
 .expense-form,
 .controls {
   display: grid;
   gap: 1rem;
+}
+
+.auth-form {
+  grid-template-columns: minmax(220px, 320px) auto;
+  align-items: end;
 }
 
 .expense-form {
@@ -341,6 +358,7 @@ tbody td {
 @media (max-width: 920px) {
   .workspace,
   .summary-grid,
+  .auth-form,
   .expense-form,
   .controls {
     grid-template-columns: 1fr;

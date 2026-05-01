@@ -7,8 +7,10 @@ const state = {
   isLoadingList: false,
   isSubmitting: false,
   listError: "",
+  authStatus: null,
   formStatus: null,
-  pendingSubmission: readPendingSubmission(),
+  currentUser: readStoredUser(),
+  pendingSubmission: null,
   latestListRequestId: 0
 };
 
@@ -21,6 +23,11 @@ const dateFormatter = new Intl.DateTimeFormat("en-IN", {
   dateStyle: "medium"
 });
 
+const authForm = document.querySelector("#authForm");
+const userNameInput = document.querySelector("#userNameInput");
+const currentUserLabel = document.querySelector("#currentUserLabel");
+const authStatus = document.querySelector("#authStatus");
+const switchUserButton = document.querySelector("#switchUserButton");
 const amountInput = document.querySelector("#amountInput");
 const categoryInput = document.querySelector("#categoryInput");
 const dateInput = document.querySelector("#dateInput");
@@ -41,7 +48,9 @@ const pendingMessage = document.querySelector("#pendingMessage");
 const retryPendingButton = document.querySelector("#retryPendingButton");
 const discardPendingButton = document.querySelector("#discardPendingButton");
 
-// Wire UI interactions to the main data-loading and submission flows.
+// Wire UI interactions to the main auth, list-loading, and submission flows.
+authForm.addEventListener("submit", handleAuthSubmit);
+switchUserButton.addEventListener("click", handleSwitchProfile);
 form.addEventListener("submit", handleSubmit);
 categoryFilter.addEventListener("change", async () => {
   state.filterCategory = categoryFilter.value;
@@ -65,19 +74,69 @@ discardPendingButton.addEventListener("click", () => {
 
 initialize();
 
-// Prime the UI, load the first list, and safely resume any interrupted submission.
+// Prime the UI and restore the previously used simple profile if one exists.
 async function initialize() {
   if (!dateInput.value) {
     dateInput.value = new Date().toISOString().slice(0, 10);
   }
 
-  render();
-  await loadExpenses();
-
-  if (state.pendingSubmission) {
-    showFormStatus("warning", "An unfinished submission was found. Retrying it safely now.");
-    await submitExpense({ reusePending: true });
+  if (state.currentUser) {
+    userNameInput.value = state.currentUser.name;
+    persistAuthCookie(state.currentUser);
   }
+
+  render();
+
+  if (state.currentUser) {
+    await activateCurrentUser();
+  } else {
+    showAuthStatus("warning", "Sign in with a simple name to keep your expenses separate.");
+    render();
+  }
+}
+
+// Save or restore the lightweight profile used to scope expenses per user.
+async function handleAuthSubmit(event) {
+  event.preventDefault();
+
+  const normalizedName = normalizeUserName(userNameInput.value);
+
+  if (!normalizedName) {
+    showAuthStatus("error", "Your name is required.");
+    render();
+    return;
+  }
+
+  if (normalizedName.length > 50) {
+    showAuthStatus("error", "Your name must be 50 characters or fewer.");
+    render();
+    return;
+  }
+
+  state.currentUser = {
+    id: createUserId(normalizedName),
+    name: normalizedName
+  };
+  persistCurrentUser(state.currentUser);
+  persistAuthCookie(state.currentUser);
+  await activateCurrentUser();
+}
+
+// Let someone switch to another lightweight profile on the same browser.
+function handleSwitchProfile() {
+  state.currentUser = null;
+  state.pendingSubmission = null;
+  state.expenses = [];
+  state.availableCategories = [];
+  state.totalAmount = "0.00";
+  state.filterCategory = "";
+  state.listError = "";
+  state.formStatus = null;
+  clearStoredUser();
+  clearAuthCookie();
+  userNameInput.value = "";
+  showAuthStatus("warning", "Enter another name to view a different personal expense list.");
+  render();
 }
 
 // Funnel every form submit through the same retry-safe creation flow.
@@ -89,6 +148,12 @@ async function handleSubmit(event) {
 // Create a new expense or replay a pending one while preserving its idempotency key.
 async function submitExpense({ reusePending = false } = {}) {
   if (state.isSubmitting) {
+    return;
+  }
+
+  if (!state.currentUser) {
+    showAuthStatus("error", "Sign in before adding expenses.");
+    render();
     return;
   }
 
@@ -122,7 +187,8 @@ async function submitExpense({ reusePending = false } = {}) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Idempotency-Key": pending.key
+        "Idempotency-Key": pending.key,
+        "X-User-Name": state.currentUser.name
       },
       body: JSON.stringify(pending.payload)
     });
@@ -157,8 +223,18 @@ async function submitExpense({ reusePending = false } = {}) {
   }
 }
 
-// Fetch the current list from the API using the active filter and sort controls.
+// Fetch the current user's expense list from the API using the active filter and sort controls.
 async function loadExpenses() {
+  if (!state.currentUser) {
+    state.expenses = [];
+    state.availableCategories = [];
+    state.totalAmount = "0.00";
+    state.listError = "";
+    state.isLoadingList = false;
+    render();
+    return;
+  }
+
   const requestId = ++state.latestListRequestId;
   state.isLoadingList = true;
   state.listError = "";
@@ -176,7 +252,11 @@ async function loadExpenses() {
 
   try {
     const endpoint = query.toString() ? `/expenses?${query}` : "/expenses";
-    const response = await fetch(endpoint);
+    const response = await fetch(endpoint, {
+      headers: {
+        "X-User-Name": state.currentUser.name
+      }
+    });
     const result = await readJson(response);
 
     if (requestId !== state.latestListRequestId) {
@@ -209,18 +289,46 @@ async function loadExpenses() {
 
 // Redraw all UI pieces from the current client-side state.
 function render() {
-  submitButton.disabled = state.isSubmitting;
+  const authLocked = !state.currentUser;
+
+  submitButton.disabled = state.isSubmitting || authLocked;
   submitButton.textContent = state.isSubmitting ? "Saving..." : "Save expense";
+  refreshButton.disabled = authLocked;
+  categoryFilter.disabled = authLocked;
+  sortNewestInput.disabled = authLocked;
+  switchUserButton.classList.toggle("hidden", !state.currentUser);
 
   totalAmount.textContent = formatCurrency(state.totalAmount);
   expenseCount.textContent = String(state.expenses.length);
 
+  renderCurrentUser();
+  renderAuthStatus();
   renderFormStatus();
   renderListStatus();
   renderTable();
   renderCategoryFilter();
   renderCategorySuggestions();
   renderPendingBanner();
+}
+
+function renderCurrentUser() {
+  if (!state.currentUser) {
+    currentUserLabel.textContent = "Sign in with a name to start tracking your own expenses.";
+    return;
+  }
+
+  currentUserLabel.textContent = `Signed in as ${state.currentUser.name}. Only this profile's expenses and totals are shown.`;
+}
+
+function renderAuthStatus() {
+  if (!state.authStatus) {
+    authStatus.className = "status hidden";
+    authStatus.textContent = "";
+    return;
+  }
+
+  authStatus.className = `status status-${state.authStatus.kind}`;
+  authStatus.textContent = state.authStatus.message;
 }
 
 function renderFormStatus() {
@@ -235,6 +343,12 @@ function renderFormStatus() {
 }
 
 function renderListStatus() {
+  if (!state.currentUser) {
+    listStatus.className = "status status-warning";
+    listStatus.textContent = "Sign in to load your personal expense list.";
+    return;
+  }
+
   if (state.listError) {
     listStatus.className = "status status-error";
     listStatus.textContent = state.listError;
@@ -307,7 +421,7 @@ function renderCategorySuggestions() {
 }
 
 function renderPendingBanner() {
-  if (!state.pendingSubmission) {
+  if (!state.pendingSubmission || !state.currentUser) {
     pendingBanner.className = "status status-warning hidden";
     pendingMessage.textContent =
       "Retrying is safe because the request keeps the same idempotency key.";
@@ -317,7 +431,11 @@ function renderPendingBanner() {
   pendingBanner.className = "status status-warning";
   pendingMessage.textContent = `Created ${formatTimestamp(
     state.pendingSubmission.createdAt
-  )}. Retrying will not create duplicates.`;
+  )}. Retrying will not create duplicates for ${state.currentUser.name}.`;
+}
+
+function showAuthStatus(kind, message) {
+  state.authStatus = { kind, message };
 }
 
 function showFormStatus(kind, message) {
@@ -340,11 +458,12 @@ function resolvePendingSubmission(payload, reusePending) {
     return state.pendingSubmission;
   }
 
-  if (!state.pendingSubmission) {
+  if (!state.pendingSubmission && state.currentUser) {
     const newSubmission = {
       key: createIdempotencyKey(),
       payload,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      userId: state.currentUser.id
     };
 
     persistPendingSubmission(newSubmission);
@@ -383,12 +502,16 @@ function validatePayload(payload) {
   return null;
 }
 
-// Persist unfinished submissions locally so a refresh can continue safely.
+// Persist unfinished submissions locally so a refresh can continue safely for the same profile.
 function persistPendingSubmission(pendingSubmission) {
   state.pendingSubmission = pendingSubmission;
 
+  if (!state.currentUser) {
+    return;
+  }
+
   try {
-    localStorage.setItem("fenmo.pendingExpense", JSON.stringify(pendingSubmission));
+    localStorage.setItem(getPendingStorageKey(state.currentUser.id), JSON.stringify(pendingSubmission));
   } catch {
     // Local storage is a resilience enhancement, so failures should not block submission.
   }
@@ -396,19 +519,28 @@ function persistPendingSubmission(pendingSubmission) {
 
 // Clear the saved pending request once it has succeeded or been discarded.
 function clearPendingSubmission() {
+  const userId = state.currentUser?.id ?? state.pendingSubmission?.userId;
   state.pendingSubmission = null;
 
+  if (!userId) {
+    return;
+  }
+
   try {
-    localStorage.removeItem("fenmo.pendingExpense");
+    localStorage.removeItem(getPendingStorageKey(userId));
   } catch {
     // Ignore storage cleanup failures and keep the in-memory state authoritative.
   }
 }
 
-// Restore a pending request from local storage during page load.
-function readPendingSubmission() {
+// Restore a pending request from local storage during page load for the current profile only.
+function readPendingSubmission(userId) {
+  if (!userId) {
+    return null;
+  }
+
   try {
-    const rawValue = localStorage.getItem("fenmo.pendingExpense");
+    const rawValue = localStorage.getItem(getPendingStorageKey(userId));
 
     if (!rawValue) {
       return null;
@@ -420,7 +552,12 @@ function readPendingSubmission() {
       return null;
     }
 
-    if (!parsedValue.key || !parsedValue.payload || !parsedValue.createdAt) {
+    if (
+      !parsedValue.key ||
+      !parsedValue.payload ||
+      !parsedValue.createdAt ||
+      parsedValue.userId !== userId
+    ) {
       return null;
     }
 
@@ -428,6 +565,59 @@ function readPendingSubmission() {
   } catch {
     return null;
   }
+}
+
+// Restore the last-used lightweight profile from local storage.
+function readStoredUser() {
+  try {
+    const rawValue = localStorage.getItem("fenmo.currentUser");
+
+    if (!rawValue) {
+      return null;
+    }
+
+    const parsedValue = JSON.parse(rawValue);
+
+    if (!parsedValue || typeof parsedValue !== "object") {
+      return null;
+    }
+
+    if (!parsedValue.id || !parsedValue.name) {
+      return null;
+    }
+
+    return parsedValue;
+  } catch {
+    return null;
+  }
+}
+
+function persistCurrentUser(currentUser) {
+  try {
+    localStorage.setItem("fenmo.currentUser", JSON.stringify(currentUser));
+  } catch {
+    // Ignore storage failures and keep the in-memory identity authoritative for this session.
+  }
+}
+
+function clearStoredUser() {
+  try {
+    localStorage.removeItem("fenmo.currentUser");
+  } catch {
+    // Ignore storage cleanup failures and rely on the in-memory state.
+  }
+}
+
+function persistAuthCookie(currentUser) {
+  document.cookie = `fenmo_user_name=${encodeURIComponent(currentUser.name)}; path=/; max-age=31536000; samesite=lax`;
+}
+
+function clearAuthCookie() {
+  document.cookie = "fenmo_user_name=; path=/; max-age=0; samesite=lax";
+}
+
+function getPendingStorageKey(userId) {
+  return `fenmo.pendingExpense.${userId}`;
 }
 
 // Generate a client-side key that the server can use to deduplicate safe retries.
@@ -446,6 +636,14 @@ function samePayload(left, right) {
     left.description === right.description &&
     left.date === right.date
   );
+}
+
+function normalizeUserName(rawValue) {
+  return rawValue.trim().replace(/\s+/g, " ");
+}
+
+function createUserId(userName) {
+  return userName.toLocaleLowerCase();
 }
 
 function formatCurrency(amount) {
@@ -481,5 +679,30 @@ async function readJson(response) {
     return await response.json();
   } catch {
     return {};
+  }
+}
+
+async function activateCurrentUser() {
+  if (!state.currentUser) {
+    return;
+  }
+
+  state.expenses = [];
+  state.availableCategories = [];
+  state.totalAmount = "0.00";
+  state.filterCategory = "";
+  state.listError = "";
+  state.formStatus = null;
+  state.pendingSubmission = readPendingSubmission(state.currentUser.id);
+  showAuthStatus("success", `Signed in as ${state.currentUser.name}.`);
+  render();
+  await loadExpenses();
+
+  if (state.pendingSubmission) {
+    showFormStatus(
+      "warning",
+      "An unfinished submission was found for this profile. Retrying it safely now."
+    );
+    await submitExpense({ reusePending: true });
   }
 }

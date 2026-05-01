@@ -54,6 +54,17 @@ def get_idempotency_key(raw_value):
     return normalized_value
 
 
+# Treat a simple user name as the lightweight identity used to keep expenses separated per person.
+def get_user_identity(raw_value):
+    if not isinstance(raw_value, str) or not raw_value.strip():
+        raise AppValidationError("Sign in with a name to continue.", 401)
+
+    user_name = require_string(raw_value, "User name", 50)
+    normalized_name = " ".join(user_name.split())
+
+    return {"id": normalized_name.casefold(), "name": normalized_name}
+
+
 def require_string(raw_value, label, max_length):
     if not isinstance(raw_value, str):
         raise AppValidationError(f"{label} is required.")

@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Expense Tracker</title>
-    <link rel="stylesheet" href="./styles.css" />
-    <script src="./app.js" type="module" defer></script>
+    <link rel="stylesheet" href="./styles.css?v=2" />
+    <script src="./app.js?v=2" type="module" defer></script>
   </head>
   <body>
     <main class="shell">
@@ -14,9 +14,47 @@
         <p class="eyebrow">Personal Finance Tool</p>
         <h1>Expense Tracker</h1>
         <p class="hero-copy">
-          Add expenses, review what is visible, and safely recover from refreshes or duplicate
-          submits without creating duplicate entries.
+          Sign in with a simple name, track only your own expenses, and safely recover from
+          refreshes or duplicate submits without creating duplicate entries.
         </p>
+      </section>
+
+      <section class="panel auth-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Simple Auth</p>
+            <h2>Your profile</h2>
+          </div>
+          <p class="section-note">
+            This lightweight sign-in keeps each person&apos;s expenses separate.
+          </p>
+        </div>
+
+        <form id="authForm" class="auth-form" novalidate>
+          <label class="auth-field">
+            <span>Your name</span>
+            <input
+              id="userNameInput"
+              name="userName"
+              type="text"
+              placeholder="Aditya"
+              autocomplete="name"
+              required
+            />
+          </label>
+
+          <div class="button-row">
+            <button id="saveUserButton" class="button" type="submit">Use this profile</button>
+            <button id="switchUserButton" class="button button-ghost hidden" type="button">
+              Switch profile
+            </button>
+          </div>
+        </form>
+
+        <p id="currentUserLabel" class="identity-line">
+          Sign in with a name to start tracking your own expenses.
+        </p>
+        <div id="authStatus" class="status hidden" role="status" aria-live="polite"></div>
       </section>
 
       <!-- Summary cards for the currently visible expense list. -->
