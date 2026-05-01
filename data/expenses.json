@@ -1,0 +1,35 @@
+{
+  "expenses": [
+    {
+      "id": "1",
+      "amountMinor": 125000,
+      "category": "Groceries",
+      "description": "Weekly grocery run",
+      "date": "2026-05-01",
+      "createdAt": "2026-05-01T12:37:25.381Z"
+    },
+    {
+      "id": "2",
+      "amountMinor": 50000,
+      "category": "Transport",
+      "description": "Metro recharge",
+      "date": "2026-05-02",
+      "createdAt": "2026-05-02T10:00:00.000Z"
+    },
+    {
+      "id": "d5e2decd-5827-403d-8472-5efb765971c7",
+      "amountMinor": 19900,
+      "category": "f",
+      "description": "a",
+      "date": "2026-05-01",
+      "createdAt": "2026-05-01T13:04:48.344822Z"
+    }
+  ],
+  "idempotencyKeys": {
+    "90cc1be5-1fe2-4000-8583-7c28db7bc64d": {
+      "expenseId": "d5e2decd-5827-403d-8472-5efb765971c7",
+      "requestHash": "2ccca6787aa53b2edc7b6b81cfb0b99f141ce356b824950a7a31471c45cb2ad8",
+      "createdAt": "2026-05-01T13:04:48.344822Z"
+    }
+  }
+}

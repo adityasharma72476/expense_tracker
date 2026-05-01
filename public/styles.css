@@ -1,0 +1,364 @@
+:root {
+  --bg: #f5f1e8;
+  --bg-accent: #efe6d6;
+  --panel: rgba(255, 251, 245, 0.92);
+  --ink: #1c2a2f;
+  --muted: #5f6a6d;
+  --line: rgba(28, 42, 47, 0.12);
+  --primary: #0f766e;
+  --primary-strong: #115e59;
+  --danger: #b42318;
+  --danger-bg: #fef3f2;
+  --success: #166534;
+  --success-bg: #effdf3;
+  --warning: #9a6700;
+  --warning-bg: #fff7e6;
+  --shadow: 0 22px 45px rgba(28, 42, 47, 0.08);
+  --radius: 22px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Aptos", "Segoe UI Variable", "Segoe UI", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgba(194, 65, 12, 0.1), transparent 22%),
+    linear-gradient(180deg, #fbf7f0 0%, var(--bg) 100%);
+}
+
+.shell {
+  width: min(1120px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0 3rem;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(12px);
+}
+
+.hero {
+  padding: 2rem;
+}
+
+.hero h1,
+.section-heading h2 {
+  margin: 0;
+  font-size: clamp(2rem, 3vw, 3.25rem);
+  line-height: 1;
+}
+
+.section-heading h2 {
+  font-size: 1.5rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.hero-copy,
+.section-note,
+label span,
+.status span {
+  color: var(--muted);
+}
+
+.hero-copy {
+  max-width: 56rem;
+  margin: 1rem 0 0;
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.summary-grid,
+.workspace {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.summary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.summary-card {
+  padding: 1.25rem 1.5rem;
+}
+
+.summary-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.summary-value {
+  margin: 0.45rem 0 0;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  font-weight: 700;
+}
+
+.workspace {
+  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.workspace > .panel {
+  padding: 1.5rem;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+  margin-bottom: 1.25rem;
+}
+
+.section-note {
+  max-width: 14rem;
+  margin: 0;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.expense-form,
+.controls {
+  display: grid;
+  gap: 1rem;
+}
+
+.expense-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.controls {
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+
+label {
+  display: grid;
+  gap: 0.45rem;
+  font-weight: 600;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid rgba(28, 42, 47, 0.16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 0.85rem 1rem;
+  color: var(--ink);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: rgba(15, 118, 110, 0.8);
+  box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.14);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 7rem;
+}
+
+.description-field,
+.form-footer,
+.status {
+  grid-column: 1 / -1;
+}
+
+.form-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.button-row {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.button {
+  border: none;
+  border-radius: 999px;
+  padding: 0.85rem 1.2rem;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 150ms ease, opacity 150ms ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+.button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+  transform: none;
+}
+
+.button-secondary {
+  background: #f0fdfa;
+  color: var(--primary-strong);
+  border: 1px solid rgba(15, 118, 110, 0.2);
+}
+
+.button-ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid rgba(28, 42, 47, 0.16);
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-height: 100%;
+}
+
+.checkbox-field input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+}
+
+.status {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.9rem 1rem;
+  border-radius: 18px;
+  border: 1px solid transparent;
+  line-height: 1.45;
+}
+
+.status strong {
+  display: block;
+  margin-bottom: 0.15rem;
+}
+
+.status-success {
+  background: var(--success-bg);
+  border-color: rgba(22, 101, 52, 0.14);
+  color: var(--success);
+}
+
+.status-error {
+  background: var(--danger-bg);
+  border-color: rgba(180, 35, 24, 0.16);
+  color: var(--danger);
+}
+
+.status-warning {
+  background: var(--warning-bg);
+  border-color: rgba(154, 103, 0, 0.18);
+  color: var(--warning);
+}
+
+.hidden {
+  display: none;
+}
+
+.table-shell {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead th {
+  padding: 1rem;
+  text-align: left;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+tbody td {
+  padding: 1rem;
+  border-top: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.amount-column,
+.amount-cell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.empty-row {
+  text-align: center;
+  color: var(--muted);
+  padding: 2rem 1rem;
+}
+
+.meta-line {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 920px) {
+  .workspace,
+  .summary-grid,
+  .expense-form,
+  .controls {
+    grid-template-columns: 1fr;
+  }
+
+  .section-heading,
+  .form-footer,
+  .status {
+    align-items: start;
+    flex-direction: column;
+  }
+
+  .section-note {
+    max-width: none;
+    text-align: left;
+  }
+
+  .button-row {
+    width: 100%;
+  }
+}

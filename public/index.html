@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Expense Tracker</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" type="module" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <!-- Header and assignment context for the page. -->
+      <section class="hero panel">
+        <p class="eyebrow">Personal Finance Tool</p>
+        <h1>Expense Tracker</h1>
+        <p class="hero-copy">
+          Add expenses, review what is visible, and safely recover from refreshes or duplicate
+          submits without creating duplicate entries.
+        </p>
+      </section>
+
+      <!-- Summary cards for the currently visible expense list. -->
+      <section class="summary-grid" aria-label="Summary">
+        <article class="summary-card panel">
+          <p class="summary-label">Visible total</p>
+          <p class="summary-value" id="totalAmount">INR 0.00</p>
+        </article>
+        <article class="summary-card panel">
+          <p class="summary-label">Visible expenses</p>
+          <p class="summary-value" id="expenseCount">0</p>
+        </article>
+      </section>
+
+      <section class="workspace">
+        <div class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Create Expense</p>
+              <h2>Add a new expense</h2>
+            </div>
+            <p class="section-note">Submissions are retry-safe and survive page refreshes.</p>
+          </div>
+
+          <!-- Recover unfinished submissions without creating duplicate expenses. -->
+          <div id="pendingBanner" class="status status-warning hidden" role="status">
+            <div>
+              <strong>Unfinished submission detected.</strong>
+              <span id="pendingMessage">
+                Retrying is safe because the request keeps the same idempotency key.
+              </span>
+            </div>
+            <div class="button-row">
+              <button id="retryPendingButton" class="button button-secondary" type="button">
+                Retry pending
+              </button>
+              <button id="discardPendingButton" class="button button-ghost" type="button">
+                Discard pending
+              </button>
+            </div>
+          </div>
+
+          <!-- Form used to create a new expense entry. -->
+          <form id="expenseForm" class="expense-form" novalidate>
+            <label>
+              <span>Amount</span>
+              <input
+                id="amountInput"
+                name="amount"
+                type="text"
+                inputmode="decimal"
+                placeholder="1250.00"
+                autocomplete="off"
+                required
+              />
+            </label>
+
+            <label>
+              <span>Category</span>
+              <input
+                id="categoryInput"
+                name="category"
+                type="text"
+                list="categorySuggestions"
+                placeholder="Groceries"
+                autocomplete="off"
+                required
+              />
+              <datalist id="categorySuggestions"></datalist>
+            </label>
+
+            <label>
+              <span>Date</span>
+              <input id="dateInput" name="date" type="date" required />
+            </label>
+
+            <label class="description-field">
+              <span>Description</span>
+              <textarea
+                id="descriptionInput"
+                name="description"
+                rows="4"
+                placeholder="Weekly grocery run"
+                required
+              ></textarea>
+            </label>
+
+            <div class="form-footer">
+              <div id="formStatus" class="status hidden" role="status" aria-live="polite"></div>
+              <button id="submitButton" class="button" type="submit">Save expense</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Review Expenses</p>
+              <h2>Current list</h2>
+            </div>
+            <div class="button-row">
+              <button id="refreshButton" class="button button-ghost" type="button">Refresh</button>
+            </div>
+          </div>
+
+          <!-- Controls that shape the currently visible expense list. -->
+          <div class="controls">
+            <label>
+              <span>Filter by category</span>
+              <select id="categoryFilter">
+                <option value="">All categories</option>
+              </select>
+            </label>
+
+            <label class="checkbox-field">
+              <input id="sortNewestInput" type="checkbox" checked />
+              <span>Sort by newest date first</span>
+            </label>
+          </div>
+
+          <div id="listStatus" class="status hidden" role="status" aria-live="polite"></div>
+
+          <!-- Table that shows the filtered and sorted expenses returned by the API. -->
+          <div class="table-shell">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Category</th>
+                  <th scope="col">Description</th>
+                  <th scope="col" class="amount-column">Amount</th>
+                </tr>
+              </thead>
+              <tbody id="expenseTableBody">
+                <tr>
+                  <td colspan="4" class="empty-row">No expenses yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
